@@ -2,10 +2,12 @@
 const { Connection, Keypair, Transaction, VersionedTransaction } = require('@solana/web3.js');
 const fetch = require('cross-fetch');
 const bs58 = require('bs58');
+const yargs = require('yargs');
+
 
 
 // Vos informations
-const privateKey = '';
+const privateKey = '<YOUR-PRIVATE-KEY>';
 const userKeyPair = Keypair.fromSecretKey(bs58.decode(privateKey));
 
 // Endpoint RPC
@@ -73,17 +75,23 @@ async function signAndExecuteTransaction(transaction, userKeyPair) {
 }
 
 // Script principal
-async function main() {
+async function main(inputAction, inputContract, inputSlip, inputQuantity) {
     try {
         // Étape 1: Récupérer la carte des routes
         const routeMap = await getRouteMap();
         // console.log('Route Map:', routeMap);
 
-        // Étape 2: Obtenir la route pour un échange (SOL vers USDC par exemple)
-        const inputMint = 'So11111111111111111111111111111111111111112'; // SOL
-        const outputMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC
-        const amount = 10000000; // 0.1 SOL
-        const slippage = 50; // 0.5%
+        if (inputAction === 'buy') {
+            var inputMint = 'So11111111111111111111111111111111111111112'; // SOL
+            var outputMint = inputContract;
+        } else if (inputAction === 'sell') {
+            var inputMint = inputContract;
+            var outputMint = 'So11111111111111111111111111111111111111112'; // SOL
+        }
+        // 10000000 = 1 SOL
+        const amount = inputQuantity * 1000000000;
+        const slippage = inputSlip * 100;
+        // récupérer les arguments de la ligne de commande, le premier correspond à l'adresse du token à recevoir, le second à la quantité à échanger, le troisième au slippage
 
         const swapRoute = await getSwapRoute(inputMint, outputMint, amount, slippage);
         // console.log('Swap Route:', swapRoute);
@@ -98,5 +106,52 @@ async function main() {
     }
 }
 
+// Réception des arguments de la ligne de commande
+const argv = yargs
+    .option('action', {
+        describe: 'Specify the action',
+        type: 'string',
+    })
+    .option('contract', {
+        describe: 'Specify the contract',
+        type: 'string',
+    })
+    .option('slip', {
+        describe: 'Specify the slip',
+        type: 'number',
+    })
+    .option('quantity', {
+        describe: 'Specify the quantity',
+        type: 'number',
+    })
+    .help()
+    .argv;
+
+const inputAction = argv.action;
+const inputContract = argv.contract;
+const inputSlip = argv.slip;
+const inputQuantity = argv.quantity;
+
+
+// Si inputAction est vide on met buy par défaut
+if (inputAction === undefined) {
+    inputAction = 'buy';
+}
+// Si inputContract est vide on retourne une erreur: "Contract is required""
+if (inputContract === undefined) {
+    console.log('Contract is required');
+    return;
+}
+// Si inputSlip est vide on met 0.5 par défaut
+if (inputSlip === undefined) {
+    inputSlip = 0.5;
+}
+// Si inputQuantity est vide on retourne une erreur: "Quantity is required""
+if (inputQuantity === undefined) {
+    console.log('Quantity is required');
+    return;
+}
+
+
 // Exécuter le script principal
-main();
+main(inputAction, inputContract, inputSlip, inputQuantity);
