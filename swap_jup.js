@@ -7,7 +7,7 @@ const yargs = require('yargs');
 
 
 // Vos informations
-const privateKey = '<YOUR-PRIVATE-KEY>';
+const privateKey = inputWallet;
 const userKeyPair = Keypair.fromSecretKey(bs58.decode(privateKey));
 
 // Endpoint RPC
@@ -124,6 +124,10 @@ const argv = yargs
         describe: 'Specify the quantity',
         type: 'number',
     })
+    .option('wallet', {
+        describe: 'Specify your secret key',
+        type: 'string',
+    })
     .help()
     .argv;
 
@@ -131,6 +135,7 @@ const inputAction = argv.action;
 const inputContract = argv.contract;
 const inputSlip = argv.slip;
 const inputQuantity = argv.quantity;
+const inputWallet = argv.wallet;
 
 
 // Si inputAction est vide on met buy par défaut
@@ -149,6 +154,11 @@ if (inputSlip === undefined) {
 // Si inputQuantity est vide on retourne une erreur: "Quantity is required""
 if (inputQuantity === undefined) {
     console.log('Quantity is required');
+    return;
+}
+// Si inputWallet est vide on retourne une erreur: "Wallet is required""
+if (inputWallet === undefined) {
+    console.log('Wallet is required !');
     return;
 }
 
