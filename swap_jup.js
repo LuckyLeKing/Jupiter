@@ -1,11 +1,65 @@
-// const { Connection, Keypair, Transaction, TransactionInstruction, SystemProgram } = require('@solana/web3.js');
-const { Connection, Keypair, Transaction, VersionedTransaction } = require('@solana/web3.js');
+const { Connection, Keypair, Transaction, VersionedTransaction, PublicKey } = require('@solana/web3.js');
+const { Token } = require('@solana/spl-token');
 const fetch = require('cross-fetch');
 const bs58 = require('bs58');
 const yargs = require('yargs');
 
 
+// Réception des arguments de la ligne de commande
+const argv = yargs
+    .option('action', {
+        describe: 'Specify the action',
+        type: 'string',
+    })
+    .option('contract', {
+        describe: 'Specify the contract',
+        type: 'string',
+    })
+    .option('slip', {
+        describe: 'Specify the slip',
+        type: 'number',
+    })
+    .option('quantity', {
+        describe: 'Specify the quantity',
+        type: 'number',
+    })
+    .option('wallet', {
+        describe: 'Specify your secret key',
+        type: 'string',
+    })
+    .help()
+    .argv;
 
+const inputAction = argv.action;
+const inputContract = argv.contract;
+const inputSlip = argv.slip;
+const inputQuantity = argv.quantity;
+const inputWallet = argv.wallet;
+
+
+// Si inputAction est vide on met buy par défaut
+if (inputAction === undefined) {
+    inputAction = 'buy';
+}
+// Si inputContract est vide on retourne une erreur: "Contract is required""
+if (inputContract === undefined) {
+    console.log('Contract is required');
+    return;
+}
+// Si inputSlip est vide on met 0.5 par défaut
+if (inputSlip === undefined) {
+    inputSlip = 0.5;
+}
+// Si inputQuantity est vide on retourne une erreur: "Quantity is required""
+if (inputQuantity === undefined) {
+    console.log('Quantity is required');
+    return;
+}
+// Si inputWallet est vide on retourne une erreur: "Wallet is required""
+if (inputWallet === undefined) {
+    console.log('Wallet is required !');
+    return;
+}
 // Vos informations
 const privateKey = inputWallet;
 const userKeyPair = Keypair.fromSecretKey(bs58.decode(privateKey));
@@ -13,6 +67,20 @@ const userKeyPair = Keypair.fromSecretKey(bs58.decode(privateKey));
 // Endpoint RPC
 const rpcEndpoint = 'https://neat-hidden-sanctuary.solana-mainnet.discover.quiknode.pro/2af5315d336f9ae920028bbb90a73b724dc1bbed/';
 const connection = new Connection(rpcEndpoint, 'confirmed');
+
+// Fonction qui récupère le nombre de décimales d'un token
+async function getTokenDecimals(connection, tokenMintAddress) {
+    let mint = await connection.getParsedAccountInfo(
+        new PublicKey(tokenMintAddress)
+    )
+    decimals = mint.value.data.parsed.info.decimals
+    // Si decimals est vide on retourne une erreur: "Token not found"
+    if (decimals === undefined) {
+        console.log('Token not found');
+        return false;
+    }
+    return (decimals)
+}
 
 // Fonction pour récupérer la carte des routes
 async function getRouteMap() {
@@ -76,6 +144,12 @@ async function signAndExecuteTransaction(transaction, userKeyPair) {
 
 // Script principal
 async function main(inputAction, inputContract, inputSlip, inputQuantity) {
+
+    // Exemple d'utilisation
+    const decimals = await getTokenDecimals(connection, inputContract);
+    multiplicateur = Math.pow(10, decimals);
+
+
     try {
         // Étape 1: Récupérer la carte des routes
         const routeMap = await getRouteMap();
@@ -89,7 +163,7 @@ async function main(inputAction, inputContract, inputSlip, inputQuantity) {
             var outputMint = 'So11111111111111111111111111111111111111112'; // SOL
         }
         // 10000000 = 1 SOL
-        const amount = inputQuantity * 1000000000;
+        const amount = inputQuantity * multiplicateur;
         const slippage = inputSlip * 100;
         // récupérer les arguments de la ligne de commande, le premier correspond à l'adresse du token à recevoir, le second à la quantité à échanger, le troisième au slippage
 
@@ -104,62 +178,6 @@ async function main(inputAction, inputContract, inputSlip, inputQuantity) {
     } catch (error) {
         console.error('Error:', error);
     }
-}
-
-// Réception des arguments de la ligne de commande
-const argv = yargs
-    .option('action', {
-        describe: 'Specify the action',
-        type: 'string',
-    })
-    .option('contract', {
-        describe: 'Specify the contract',
-        type: 'string',
-    })
-    .option('slip', {
-        describe: 'Specify the slip',
-        type: 'number',
-    })
-    .option('quantity', {
-        describe: 'Specify the quantity',
-        type: 'number',
-    })
-    .option('wallet', {
-        describe: 'Specify your secret key',
-        type: 'string',
-    })
-    .help()
-    .argv;
-
-const inputAction = argv.action;
-const inputContract = argv.contract;
-const inputSlip = argv.slip;
-const inputQuantity = argv.quantity;
-const inputWallet = argv.wallet;
-
-
-// Si inputAction est vide on met buy par défaut
-if (inputAction === undefined) {
-    inputAction = 'buy';
-}
-// Si inputContract est vide on retourne une erreur: "Contract is required""
-if (inputContract === undefined) {
-    console.log('Contract is required');
-    return;
-}
-// Si inputSlip est vide on met 0.5 par défaut
-if (inputSlip === undefined) {
-    inputSlip = 0.5;
-}
-// Si inputQuantity est vide on retourne une erreur: "Quantity is required""
-if (inputQuantity === undefined) {
-    console.log('Quantity is required');
-    return;
-}
-// Si inputWallet est vide on retourne une erreur: "Wallet is required""
-if (inputWallet === undefined) {
-    console.log('Wallet is required !');
-    return;
 }
 
 
